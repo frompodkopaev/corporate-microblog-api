@@ -1,4 +1,84 @@
-from sqlalchemy import String, Integer, DateTime
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import String, Integer, ForeignKey, UniqueConstraint
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app import Base
+
+
+class User(Base):
+    """ Model for user"""
+    __tablename__ = "users"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    followers: Mapped[list["User"]] = relationship(
+        secondary="followings",
+        primaryjoin="Follow.following_id == User.id",
+        secondaryjoin="Follow.follower_id == User.id",
+        back_populates="following",
+        lazy="selectin",
+        viewonly=True
+    )
+    following: Mapped[list["User"]] = relationship(
+        secondary="followings",
+        primaryjoin="Follow.follower_id == User.id",
+        secondaryjoin="Follow.following_id == User.id",
+        back_populates="followers",
+        lazy="selectin",
+        viewonly=True
+    )
+
+    follower_relationships: Mapped[list["Follow"]] = relationship(
+        foreign_keys="[Follow.following_id]",
+        back_populates="following_user",
+        cascade="all, delete-orphan"
+    )
+    following_relationships: Mapped[list["Follow"]] = relationship(
+        foreign_keys="[Follow.follower_id]",
+        back_populates="follower_user",
+        cascade="all, delete-orphan"
+    )
+
+
+    def follow(self, user: "User") -> "Follow":
+        if user not in self.following:
+            follow_rel = Follow(follower_id=self.id, following_id=user.id)
+            self.following_relationships.append(follow_rel)
+        return follow_rel
+
+
+    def unfollow(self, user: "User"):
+        for rel in self.following_relationships:
+            if rel.following_id == user.id:
+                self.following_relationships.remove(rel)
+                break
+
+
+class Follow(Base):
+    """Model for follow relationships between users"""
+    __tablename__ = "followings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    follower_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    following_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    follower_user: Mapped["User"] = relationship(
+        foreign_keys=[following_id],
+        back_populates="following_relationships"
+    )
+    following_user: Mapped["User"] = relationship(
+        foreign_keys=[following_id],
+        back_populates="follower_relationships"
+    )
+
+    __table_args__ = (
+        UniqueConstraint("follower_id", "following_id", name="uq_follower_following")
+    )
