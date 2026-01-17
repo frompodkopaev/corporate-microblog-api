@@ -1,5 +1,8 @@
 from sqlalchemy import String, Integer, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
+import bcrypt
+import hashlib
+import secrets
 
 from app import Base
 
@@ -37,6 +40,12 @@ class User(Base):
         foreign_keys="[Follow.follower_id]",
         back_populates="follower_user",
         cascade="all, delete-orphan"
+    )
+
+    apy_keys: Mapped[list["ApiKey"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin"
     )
 
 
@@ -82,3 +91,40 @@ class Follow(Base):
     __table_args__ = (
         UniqueConstraint("follower_id", "following_id", name="uq_follower_following")
     )
+
+
+class ApiKey(Base):
+    """Model for API key"""
+    __tablename__ = "api_keys"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    key_prefix: Mapped[str] = mapped_column(
+        String(8),
+        nullable=False,
+        unique=True,
+        index=True
+    )
+    key_hash: Mapped[str] = mapped_column(
+        String(255),
+        nullable=False,
+        unique=True,
+        index=True
+    )
+
+    user: Mapped["User"] = relationship(
+        back_populates="api_keys",
+        lazy="joined"
+    )
+
+    @staticmethod
+    def hash_key(key:str) -> str:
+        salt = bcrypt.gensalt()
+        return bcrypt.hashpw(key.encode(), salt).decode()
+
+    def verify_key(self, key: str) -> bool:
+        return bcrypt.checkpw(key.encode(), self.key_hash.encode())

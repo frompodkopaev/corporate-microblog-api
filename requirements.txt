@@ -4,3 +4,4 @@ python-multipart==0.0.21
 aiofiles==25.1.0
 sqlalchemy==2.0.45
 asyncpg==0.31.0
+bcrypt==5.0.0
