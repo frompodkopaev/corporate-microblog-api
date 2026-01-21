@@ -1,8 +1,6 @@
 from sqlalchemy import String, Integer, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import bcrypt
-import hashlib
-import secrets
 
 from app import Base
 
@@ -11,7 +9,7 @@ class User(Base):
     """ Model for user"""
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    id: Mapped[int] = mapped_column(primary_key=True, index=True)
     name: Mapped[str] = mapped_column(String(255), nullable=False)
 
     followers: Mapped[list["User"]] = relationship(
@@ -42,7 +40,7 @@ class User(Base):
         cascade="all, delete-orphan"
     )
 
-    apy_keys: Mapped[list["ApiKey"]] = relationship(
+    api_keys: Mapped[list["ApiKey"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
         lazy="selectin"
@@ -67,7 +65,7 @@ class Follow(Base):
     """Model for follow relationships between users"""
     __tablename__ = "followings"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     follower_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
@@ -97,7 +95,7 @@ class ApiKey(Base):
     """Model for API key"""
     __tablename__ = "api_keys"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
@@ -128,3 +126,59 @@ class ApiKey(Base):
 
     def verify_key(self, key: str) -> bool:
         return bcrypt.checkpw(key.encode(), self.key_hash.encode())
+
+
+class Tweet(Base):
+    """Model fot tweets"""
+    __tablename__ = "tweets"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    content: Mapped[str] = mapped_column(String(1000), nullable=False)
+
+    media: Mapped[list["Media"]] = relationship(
+        back_populates="tweet",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
+    likes: Mapped[list["Like"]] = relationship(
+        back_populates="tweet",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
+
+
+class Media(Base):
+    """Model for media"""
+    __tablename__ = "medias"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    tweet_id: Mapped[int] = mapped_column(
+        ForeignKey("tweets.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+    tweet: Mapped["Tweet"] = relationship(back_populates="media")
+
+
+class Like(Base):
+    """Model for likes"""
+    __tablename__ = "likes"
+
+    tweet_id: Mapped[int] = mapped_column(
+        ForeignKey("tweets.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        primary_key=True
+    )
+    tweet: Mapped["Tweet"] = relationship(back_populates="likes")
+
+    __table_args__ = (
+        UniqueConstraint('tweet_id', 'user_id', name='uq_like_tweet_user'),
+    )
