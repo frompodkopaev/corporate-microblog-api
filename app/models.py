@@ -46,6 +46,18 @@ class User(Base):
         lazy="selectin"
     )
 
+    tweets: Mapped[list["Tweet"]] = relationship(
+        back_populates="author",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
+
+    likes: Mapped[list["Like"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        lazy="selectin"
+    )
+
 
     def follow(self, user: "User") -> "Follow":
         if user not in self.following:
@@ -140,6 +152,8 @@ class Tweet(Base):
     )
     content: Mapped[str] = mapped_column(String(1000), nullable=False)
 
+    author: Mapped["User"] = relationship(back_populates="tweets")
+
     media: Mapped[list["Media"]] = relationship(
         back_populates="tweet",
         cascade="all, delete-orphan",
@@ -157,6 +171,7 @@ class Media(Base):
     __tablename__ = "medias"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    link: Mapped[str] = mapped_column(String(500), nullable=False)
     tweet_id: Mapped[int] = mapped_column(
         ForeignKey("tweets.id", ondelete="CASCADE"),
         nullable=False,
@@ -178,6 +193,7 @@ class Like(Base):
         primary_key=True
     )
     tweet: Mapped["Tweet"] = relationship(back_populates="likes")
+    user: Mapped["User"] = relationship(back_populates="likes")
 
     __table_args__ = (
         UniqueConstraint('tweet_id', 'user_id', name='uq_like_tweet_user'),
