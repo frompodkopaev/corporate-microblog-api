@@ -58,21 +58,6 @@ class User(Base):
         lazy="selectin"
     )
 
-
-    def follow(self, user: "User") -> "Follow":
-        if user not in self.following:
-            follow_rel = Follow(follower_id=self.id, following_id=user.id)
-            self.following_relationships.append(follow_rel)
-        return follow_rel
-
-
-    def unfollow(self, user: "User"):
-        for rel in self.following_relationships:
-            if rel.following_id == user.id:
-                self.following_relationships.remove(rel)
-                break
-
-
 class Follow(Base):
     """Model for follow relationships between users"""
     __tablename__ = "followings"
