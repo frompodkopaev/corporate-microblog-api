@@ -16,23 +16,6 @@ async def get_api_key(api_key: Optional[str] = Header(None, alias="api-key")) ->
         return api_key
     return None
 
-async def get_user_from_apy_key(
-        api_key: Optional[str] = Depends(get_api_key),
-        db: AsyncSession = Depends(get_db)
-) -> Optional[User]:
-    if not api_key:
-        return None
-
-    key_prefix = api_key[:8]
-    stmt = select(ApiKey).where(ApiKey.key_prefix == key_prefix).options(selectinload(ApiKey.user))
-    result = await db.execute(stmt)
-    db_key = result.scalar_one_or_none()
-    if not db_key:
-        return None
-    if not db_key.verify_key(api_key):
-        return None
-    return db_key.user
-
 @app.get("/hello-world")
 async def hello_world() -> Dict[str, str]:
     return {"message": "Hello world!"}

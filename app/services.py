@@ -1,7 +1,9 @@
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
-from app import User, Follow
+from app import ApiKey, User, Follow
 
 
 class UserService:
@@ -52,3 +54,21 @@ class UserService:
         await self.db.delete(follow)
         await self.db.commit()
         return True
+
+
+class ApiKeyService:
+    """Srvice for authentication by api-key"""
+
+    def __init__(self, db: AsyncSession):
+        self.db = db
+
+    async def authenticate(self, api_key: str) -> Optional[User]:
+        key_prefix = api_key[:8]
+        stmt = select(ApiKey).where(ApiKey.key_prefix == key_prefix).options(selectinload(ApiKey.user))
+        result = await self.db.execute(stmt)
+        db_key = result.scalar_one_or_none()
+        if not db_key:
+            return None
+        if not db_key.verify_key(api_key):
+            return None
+        return db_key.user
