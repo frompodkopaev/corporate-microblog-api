@@ -58,21 +58,6 @@ class User(Base):
         lazy="selectin"
     )
 
-
-    def follow(self, user: "User") -> "Follow":
-        if user not in self.following:
-            follow_rel = Follow(follower_id=self.id, following_id=user.id)
-            self.following_relationships.append(follow_rel)
-        return follow_rel
-
-
-    def unfollow(self, user: "User"):
-        for rel in self.following_relationships:
-            if rel.following_id == user.id:
-                self.following_relationships.remove(rel)
-                break
-
-
 class Follow(Base):
     """Model for follow relationships between users"""
     __tablename__ = "followings"
@@ -171,11 +156,11 @@ class Media(Base):
     __tablename__ = "medias"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    link: Mapped[str] = mapped_column(String(500), nullable=False)
+    link: Mapped[str] = mapped_column(String(500), nullable=True)
     tweet_id: Mapped[int] = mapped_column(
         ForeignKey("tweets.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        index=True,
+        nullable=True
     )
     tweet: Mapped["Tweet"] = relationship(back_populates="media")
 
