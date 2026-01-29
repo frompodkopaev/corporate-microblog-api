@@ -156,11 +156,11 @@ class Media(Base):
     __tablename__ = "medias"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    link: Mapped[str] = mapped_column(String(500), nullable=False)
+    link: Mapped[str] = mapped_column(String(500), nullable=True)
     tweet_id: Mapped[int] = mapped_column(
         ForeignKey("tweets.id", ondelete="CASCADE"),
-        nullable=False,
-        index=True
+        index=True,
+        nullable=True
     )
     tweet: Mapped["Tweet"] = relationship(back_populates="media")
 
