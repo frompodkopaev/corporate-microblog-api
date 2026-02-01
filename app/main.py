@@ -1,20 +1,24 @@
 from typing import Dict, Optional
 
 from aiofiles import open as aio_open
-from fastapi import Depends, Header, FastAPI, UploadFile
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
+from fastapi import FastAPI, UploadFile
 
-from app import get_db, User, ApiKey
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+from app import init_db, close_db
 
 
-async def get_api_key(api_key: Optional[str] = Header(None, alias="api-key")) -> Optional[str]:
-    if api_key:
-        return api_key
-    return None
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await init_db()
+    yield
+    await close_db()
+
+app = FastAPI(
+    title="Corporative microblog API",
+    lifespan=lifespan
+)
+
 
 @app.get("/hello-world")
 async def hello_world() -> Dict[str, str]:
