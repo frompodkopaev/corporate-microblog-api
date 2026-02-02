@@ -84,7 +84,7 @@ class Follow(Base):
     )
 
     __table_args__ = (
-        UniqueConstraint("follower_id", "following_id", name="uq_follower_following")
+        UniqueConstraint("follower_id", "following_id", name="uq_follower_following"),
     )
 
 

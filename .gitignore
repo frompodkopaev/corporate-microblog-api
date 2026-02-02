@@ -1,3 +1,5 @@
 /.idea/
 /.venv/
 /.project_data/
+.env
+scripts/test_users.json
