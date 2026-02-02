@@ -3,5 +3,6 @@ uvicorn==0.40.0
 python-multipart==0.0.21
 aiofiles==25.1.0
 sqlalchemy==2.0.45
+alembic==1.18.3
 asyncpg==0.31.0
 bcrypt==5.0.0
