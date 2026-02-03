@@ -9,7 +9,7 @@ import hashlib
 sys.path.append(str(Path(__file__).parent.parent))
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy import select
+from sqlalchemy import select, text
 from app.models import User, ApiKey
 
 DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/corporative_microblog_api"
@@ -26,6 +26,9 @@ async def seed_users():
         existing = result.scalars().all()
 
         if existing:
+            await session.execute(text("DELETE FROM api_keys;"))
+            await session.execute(text("DELETE FROM users;"))
+            await session.commit()
             return
 
         users_data = [
@@ -43,7 +46,7 @@ async def seed_users():
 
             api_key_value = secrets.token_urlsafe(32)
             key_prefix = api_key_value[:8]
-            key_hash = hashlib.sha256(api_key_value.encode()).hexdigest()
+            key_hash = ApiKey.hash_key(api_key_value)
 
             api_key = ApiKey(
                 user_id=user.id,

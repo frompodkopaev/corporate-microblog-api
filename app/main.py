@@ -6,6 +6,7 @@ from fastapi import FastAPI, UploadFile
 from contextlib import asynccontextmanager
 
 from app import init_db, close_db
+from app.routes import users
 
 
 @asynccontextmanager
@@ -19,6 +20,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+app.include_router(users.router)
 
 @app.get("/hello-world")
 async def hello_world() -> Dict[str, str]:

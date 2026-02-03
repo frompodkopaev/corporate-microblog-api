@@ -18,7 +18,8 @@ class User(Base):
         secondaryjoin="Follow.follower_id == User.id",
         back_populates="following",
         lazy="selectin",
-        viewonly=True
+        viewonly=True,
+        overlaps="follower_relationships"
     )
     following: Mapped[list["User"]] = relationship(
         secondary="followings",
@@ -26,18 +27,21 @@ class User(Base):
         secondaryjoin="Follow.following_id == User.id",
         back_populates="followers",
         lazy="selectin",
-        viewonly=True
+        viewonly=True,
+        overlaps="following_relationships"
     )
 
     follower_relationships: Mapped[list["Follow"]] = relationship(
         foreign_keys="[Follow.following_id]",
         back_populates="following_user",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        overlaps="followers"
     )
     following_relationships: Mapped[list["Follow"]] = relationship(
         foreign_keys="[Follow.follower_id]",
         back_populates="follower_user",
-        cascade="all, delete-orphan"
+        cascade="all, delete-orphan",
+        overlaps="following"
     )
 
     api_keys: Mapped[list["ApiKey"]] = relationship(
@@ -76,11 +80,13 @@ class Follow(Base):
 
     follower_user: Mapped["User"] = relationship(
         foreign_keys=[following_id],
-        back_populates="following_relationships"
+        back_populates="following_relationships",
+        overlaps="following,following_relationships"
     )
     following_user: Mapped["User"] = relationship(
         foreign_keys=[following_id],
-        back_populates="follower_relationships"
+        back_populates="follower_relationships",
+        overlaps="followers,follower_relationships"
     )
 
     __table_args__ = (
@@ -117,7 +123,7 @@ class ApiKey(Base):
     )
 
     @staticmethod
-    def hash_key(key:str) -> str:
+    def hash_key(key: str) -> str:
         salt = bcrypt.gensalt()
         return bcrypt.hashpw(key.encode(), salt).decode()
 
