@@ -12,8 +12,18 @@ class UserService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def follow_user(self, user: User, following_id: int) -> Follow:
-        if following_id == User.id:
+    async def get_user(self, user: User, user_id: int) -> User:
+        if user_id == user.id:
+            return user
+
+        requested_user: Optional[User] = await self.db.get(User, user_id)
+        if not requested_user:
+            raise ValueError("User not found")
+
+        return requested_user
+
+    async def follow_user(self, user: User, following_id: int) -> bool:
+        if following_id == user.id:
             raise ValueError("User cannot follow himself")
 
         following_user = await self.db.get(User, following_id)
@@ -35,8 +45,7 @@ class UserService:
         self.db.add(follow)
         await self.db.commit()
         await self.db.refresh(follow)
-
-        return follow
+        return True
 
     async def unfollow_user(self, user, following_id: int) -> bool:
         result = await self.db.execute(

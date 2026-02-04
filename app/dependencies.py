@@ -61,6 +61,33 @@ async def authenticate_user(
 
     return user
 
+async def get_user_by_id(
+        user_id: int,
+        user: User = Depends(authenticate_user),
+        db: AsyncSession = Depends(get_db)
+) -> User:
+        user_service = UserService(db)
+        requested_user = await user_service.get_user(user, user_id)
+        return requested_user
+
+async def follow_user(
+        user_id: int,
+        user: User = Depends(authenticate_user),
+        db: AsyncSession = Depends(get_db)
+) -> bool:
+    user_service = UserService(db)
+    result = await user_service.follow_user(user, user_id)
+    return result
+
+async def unfollow_user(
+        user_id: int,
+        user: User = Depends(authenticate_user),
+        db: AsyncSession = Depends(get_db)
+) -> bool:
+    user_service = UserService(db)
+    result = await user_service.unfollow_user(user, user_id)
+    return result
+
 
 async def pagination_params(skip: int = 0, limit: int = 100) -> dict:
     return {"skip": skip, "limit": limit}
