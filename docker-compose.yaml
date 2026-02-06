@@ -4,8 +4,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - UVICORN_RELOAD=true
-      - DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/corporative_microblog_api
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@postgres:5432/corporative_microblog_api
     volumes:
       - ./app:/app/app
     depends_on:

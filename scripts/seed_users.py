@@ -3,17 +3,24 @@ import sys
 from pathlib import Path
 import json
 import secrets
-import hashlib
 
 
 sys.path.append(str(Path(__file__).parent.parent))
 
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
-from sqlalchemy import select, text
-from app.models import User, ApiKey
+from app.models import User, ApiKey, Base
 
 DATABASE_URL = "postgresql+asyncpg://postgres:password@localhost:5432/corporative_microblog_api"
 
+
+async def recreate_db():
+    engine = create_async_engine(DATABASE_URL, echo=True)
+
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
+    await engine.dispose()
 
 async def seed_users():
     """Create 3 users for testing API"""
@@ -22,15 +29,6 @@ async def seed_users():
     async_session = async_sessionmaker(engine, expire_on_commit=False)
 
     async with async_session() as session:
-        result = await session.execute(select(User))
-        existing = result.scalars().all()
-
-        if existing:
-            await session.execute(text("DELETE FROM api_keys;"))
-            await session.execute(text("DELETE FROM users;"))
-            await session.commit()
-            return
-
         users_data = [
             {"name": "Alice Developer"},
             {"name": "Bob Tester"},
@@ -75,4 +73,5 @@ async def seed_users():
 
 
 if __name__ == "__main__":
+    asyncio.run(recreate_db())
     asyncio.run(seed_users())

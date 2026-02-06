@@ -19,7 +19,7 @@ class ErrorResponse(BaseModel):
 
 
 class TweetCreate(BaseModel):
-    """Tweet creation scheme"""
+    """Tweet creation schema"""
     tweet_data: str = Field(...,alias="content", min_length=1, max_length=1000)
     media_ids: Optional[List[int]] = Field(default_factory=list)
 
@@ -51,6 +51,14 @@ class TweetResponse(BasicResponse):
     model_config = ConfigDict(from_attributes=True)
     tweet_id: int
 
+class TweetFeed(BasicResponse):
+    tweets: List[TweetInfo] = []
+
+    @classmethod
+    def create(cls, tweets: List[Tweet]):
+        return cls(
+            tweets=[TweetInfo.from_orm(tweet) for tweet in tweets]
+        )
 
 class MediaResponse(BasicResponse):
     model_config = ConfigDict(from_attributes=True)

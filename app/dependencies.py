@@ -1,7 +1,8 @@
-from typing import AsyncGenerator, Optional
-from fastapi import Depends, Header, HTTPException, status
+from typing import AsyncGenerator, Optional, List
+from fastapi import Depends, Header, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from app import AsyncSessionFabric, Base, engine, User
+from app import AsyncSessionFabric, Base, engine, User, Tweet
+from app.schemas import TweetCreate
 from app.services import UserService, ApiKeyService, TweetService, MediaService
 
 
@@ -88,6 +89,60 @@ async def unfollow_user(
     result = await user_service.unfollow_user(user, user_id)
     return result
 
+async def like_tweet(
+        tweet_id:int,
+        user: User = Depends(authenticate_user),
+        db: AsyncSession = Depends(get_db)
+) -> bool:
+    user_service = UserService(db)
+    result = await user_service.like_tweet(user, tweet_id)
+    return result
+
+async def unlike_tweet(
+        tweet_id: int,
+        user: User = Depends(authenticate_user),
+        db: AsyncSession = Depends(get_db)
+) -> bool:
+    user_service = UserService(db)
+    result = await user_service.unlike_tweet(user, tweet_id)
+    return result
+
+
+async def create_tweet(
+        tweet_schema: TweetCreate,
+        user: User = Depends(authenticate_user),
+        db: AsyncSession = Depends(get_db)
+) -> int:
+    tweet_service = TweetService(db)
+    tweet_id = await tweet_service.create_tweet(user, tweet_schema.tweet_data, tweet_schema.media_ids)
+    return tweet_id
+
+async def delete_tweet(
+        tweet_id:int,
+        user: User = Depends(authenticate_user),
+        db: AsyncSession = Depends(get_db)
+) -> bool:
+    tweet_service = TweetService(db)
+    result = await tweet_service.delete_tweet(user, tweet_id)
+    return result
+
+
+async def get_user_feed(
+        user: User = Depends(authenticate_user),
+        db: AsyncSession = Depends(get_db)
+) -> List[Tweet]:
+    user_service = UserService(db)
+    tweet_list = await user_service.get_tweets_feed_list(user)
+    return tweet_list
+
+async def upload_media(
+    file: UploadFile = File(...),
+    user: User = Depends(authenticate_user),
+    db: AsyncSession = Depends(get_db)
+) -> int:
+    """Dependency for file upload"""
+    media_service = MediaService(db)
+    return await media_service.upload_file(user, file)
 
 async def pagination_params(skip: int = 0, limit: int = 100) -> dict:
     return {"skip": skip, "limit": limit}

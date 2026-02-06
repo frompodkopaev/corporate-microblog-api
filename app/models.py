@@ -18,8 +18,7 @@ class User(Base):
         secondaryjoin="Follow.follower_id == User.id",
         back_populates="following",
         lazy="selectin",
-        viewonly=True,
-        overlaps="follower_relationships"
+        viewonly=True
     )
     following: Mapped[list["User"]] = relationship(
         secondary="followings",
@@ -27,21 +26,7 @@ class User(Base):
         secondaryjoin="Follow.following_id == User.id",
         back_populates="followers",
         lazy="selectin",
-        viewonly=True,
-        overlaps="following_relationships"
-    )
-
-    follower_relationships: Mapped[list["Follow"]] = relationship(
-        foreign_keys="[Follow.following_id]",
-        back_populates="following_user",
-        cascade="all, delete-orphan",
-        overlaps="followers"
-    )
-    following_relationships: Mapped[list["Follow"]] = relationship(
-        foreign_keys="[Follow.follower_id]",
-        back_populates="follower_user",
-        cascade="all, delete-orphan",
-        overlaps="following"
+        viewonly=True
     )
 
     api_keys: Mapped[list["ApiKey"]] = relationship(
@@ -76,17 +61,6 @@ class Follow(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True
-    )
-
-    follower_user: Mapped["User"] = relationship(
-        foreign_keys=[following_id],
-        back_populates="following_relationships",
-        overlaps="following,following_relationships"
-    )
-    following_user: Mapped["User"] = relationship(
-        foreign_keys=[following_id],
-        back_populates="follower_relationships",
-        overlaps="followers,follower_relationships"
     )
 
     __table_args__ = (
@@ -142,6 +116,7 @@ class Tweet(Base):
         index=True
     )
     content: Mapped[str] = mapped_column(String(1000), nullable=False)
+    likes_counter: Mapped[int] = mapped_column(default=0, index=True)
 
     author: Mapped["User"] = relationship(back_populates="tweets")
 
