@@ -19,7 +19,7 @@ class ErrorResponse(BaseModel):
 
 
 class TweetCreate(BaseModel):
-    """Tweet creation scheme"""
+    """Tweet creation schema"""
     tweet_data: str = Field(...,alias="content", min_length=1, max_length=1000)
     media_ids: Optional[List[int]] = Field(default_factory=list)
 
@@ -51,6 +51,14 @@ class TweetResponse(BasicResponse):
     model_config = ConfigDict(from_attributes=True)
     tweet_id: int
 
+class TweetFeed(BasicResponse):
+    tweets: List[TweetInfo] = []
+
+    @classmethod
+    def create(cls, tweets: List[Tweet]):
+        return cls(
+            tweets=[TweetInfo.from_orm(tweet) for tweet in tweets]
+        )
 
 class MediaResponse(BasicResponse):
     model_config = ConfigDict(from_attributes=True)
@@ -71,16 +79,32 @@ class UserFollowings(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    def from_orm(cls, user: User) -> "UserFollowings":
+    async def from_orm_async(cls, user: User):
+        followers = await user.awaitable_attrs.followers
+        following = await user.awaitable_attrs.following
         return cls(
             id=user.id,
             name=user.name,
             followers=[
                 UserBasic(id=f.id, name=f.name)
-                for f in user.followers
+                for f in followers
             ],
             following=[
                 UserBasic(id=f.id, name=f.name)
-                for f in user.following
+                for f in following
             ]
+        )
+
+class UserResponse(BasicResponse):
+    """Response schema for users/me"""
+    user: UserFollowings
+
+    model_config = ConfigDict(from_attributes=True)
+
+    @classmethod
+    async def create(cls, user: User) -> "UserResponse":
+        user_info = await UserFollowings.from_orm_async(user)
+        return cls(
+            result=True,
+            user=user_info
         )

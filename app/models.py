@@ -29,17 +29,6 @@ class User(Base):
         viewonly=True
     )
 
-    follower_relationships: Mapped[list["Follow"]] = relationship(
-        foreign_keys="[Follow.following_id]",
-        back_populates="following_user",
-        cascade="all, delete-orphan"
-    )
-    following_relationships: Mapped[list["Follow"]] = relationship(
-        foreign_keys="[Follow.follower_id]",
-        back_populates="follower_user",
-        cascade="all, delete-orphan"
-    )
-
     api_keys: Mapped[list["ApiKey"]] = relationship(
         back_populates="user",
         cascade="all, delete-orphan",
@@ -72,15 +61,6 @@ class Follow(Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         nullable=False,
         index=True
-    )
-
-    follower_user: Mapped["User"] = relationship(
-        foreign_keys=[following_id],
-        back_populates="following_relationships"
-    )
-    following_user: Mapped["User"] = relationship(
-        foreign_keys=[following_id],
-        back_populates="follower_relationships"
     )
 
     __table_args__ = (
@@ -117,7 +97,7 @@ class ApiKey(Base):
     )
 
     @staticmethod
-    def hash_key(key:str) -> str:
+    def hash_key(key: str) -> str:
         salt = bcrypt.gensalt()
         return bcrypt.hashpw(key.encode(), salt).decode()
 
@@ -136,6 +116,7 @@ class Tweet(Base):
         index=True
     )
     content: Mapped[str] = mapped_column(String(1000), nullable=False)
+    likes_counter: Mapped[int] = mapped_column(default=0, index=True)
 
     author: Mapped["User"] = relationship(back_populates="tweets")
 

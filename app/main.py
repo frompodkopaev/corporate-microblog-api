@@ -6,6 +6,7 @@ from fastapi import FastAPI, UploadFile
 from contextlib import asynccontextmanager
 
 from app import init_db, close_db
+from app.routes import users, tweets, medias
 
 
 @asynccontextmanager
@@ -18,6 +19,10 @@ app = FastAPI(
     title="Corporative microblog API",
     lifespan=lifespan
 )
+
+app.include_router(users.router)
+app.include_router(tweets.router)
+app.include_router(medias.router)
 
 
 @app.get("/hello-world")
