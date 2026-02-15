@@ -4,10 +4,10 @@ from uuid import uuid4
 from datetime import datetime
 from pathlib import Path
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, exists, and_, update, func
+from sqlalchemy import select, exists, and_, update
 from sqlalchemy.orm import selectinload
 
-from app import ApiKey, User, Follow, Tweet, Media, Like
+from app.models import ApiKey, User, Follow, Tweet, Media, Like
 
 
 class UserService:
@@ -47,8 +47,6 @@ class UserService:
 
         follow = Follow(follower_id=user.id, following_id=following_id)
         self.db.add(follow)
-        await self.db.commit()
-        await self.db.refresh(follow)
         return True
 
     async def unfollow_user(self, user, following_id: int) -> bool:
@@ -63,8 +61,6 @@ class UserService:
         if not follow:
             return False
 
-        await self.db.delete(follow)
-        await self.db.commit()
         return True
 
     async def like_tweet(self, user: User, tweet_id: int) -> bool:
@@ -88,7 +84,6 @@ class UserService:
         new_like = Like(tweet_id = tweet_id, user_id = user.id)
         self.db.add(new_like)
         tweet.likes_counter += 1
-        await self.db.flush()
         return True
 
 
@@ -115,7 +110,6 @@ class UserService:
         if tweet.likes_counter > 0:
             tweet.likes_counter -= 1
 
-        await self.db.flush()
         return True
 
     async def get_tweets_feed_list(self, user:User) -> List[Tweet]:
@@ -187,7 +181,7 @@ class TweetService:
         if tweet_media_ids:
             stmt = update(Media).where(Media.id.in_(tweet_media_ids)).values(tweet_id=new_tweet.id)
             await self.db.execute(stmt)
-        await self.db.commit()
+
         return new_tweet.id
 
     async def delete_tweet(
@@ -203,9 +197,6 @@ class TweetService:
 
         if tweet.user_id != user.id:
             raise ValueError("User not the author of this tweet")
-
-        await self.db.delete(tweet)
-        await self.db.commit()
 
         return True
 
@@ -259,7 +250,6 @@ class MediaService:
     def _generate_file_path(self, user_id: int, filename: Optional[str|None]) -> Path:
         """Generate unique file path"""
         if not filename:
-            # Вариант 1: Использовать дефолтное имя
             base_name = "uploaded_file"
             ext = ".bin"
         else:

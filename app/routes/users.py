@@ -1,5 +1,7 @@
 from fastapi import APIRouter, Depends
-from app import authenticate_user, UserResponse, User, BasicResponse, follow_user, unfollow_user, get_user_by_id
+from app.schemas import UserResponse, BasicResponse
+from app.dependencies import follow_user, unfollow_user, get_user_by_id, authenticate_user
+from app.models import User
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 

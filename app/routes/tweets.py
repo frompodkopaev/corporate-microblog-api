@@ -1,6 +1,8 @@
 from typing import List
 from fastapi import APIRouter, Depends
-from app import BasicResponse, TweetResponse, create_tweet, delete_tweet, like_tweet, unlike_tweet, TweetFeed, Tweet, get_user_feed
+from app.schemas import BasicResponse, TweetResponse, TweetFeed
+from app.dependencies import create_tweet, delete_tweet, like_tweet, unlike_tweet, get_user_feed
+from app.models import Tweet
 
 router = APIRouter(prefix="/api/tweets",tags=["tweets"])
 

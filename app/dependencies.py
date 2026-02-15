@@ -1,7 +1,9 @@
 from typing import AsyncGenerator, Optional, List
 from fastapi import Depends, Header, HTTPException, status, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
-from app import AsyncSessionFabric, Base, engine, User, Tweet
+
+from app.database import AsyncSessionFabric, Base, engine
+from app.models import User, Tweet
 from app.schemas import TweetCreate
 from app.services import UserService, ApiKeyService, TweetService, MediaService
 
@@ -33,18 +35,6 @@ async def get_api_key(api_key: Optional[str] = Header(None, alias="api-key")) ->
         )
     return api_key
 
-
-async def get_user_service(db: AsyncSession = Depends(get_db)):
-    return UserService(db)
-
-async def get_api_key_service(db: AsyncSession = Depends(get_db)):
-    return ApiKeyService(db)
-
-async def get_tweet_service(db: AsyncSession = Depends(get_db)):
-    return TweetService(db)
-
-async def get_media_service(db: AsyncSession = Depends(get_db)):
-    return MediaService(db)
 
 
 async def authenticate_user(
@@ -134,6 +124,7 @@ async def get_user_feed(
     user_service = UserService(db)
     tweet_list = await user_service.get_tweets_feed_list(user)
     return tweet_list
+
 
 async def upload_media(
     file: UploadFile = File(...),

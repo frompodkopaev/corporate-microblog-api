@@ -1,9 +1,6 @@
-from __future__ import annotations
 from pydantic import BaseModel, ConfigDict, Field
-from typing import List, TYPE_CHECKING, Optional
-
-if TYPE_CHECKING:
-    from app import User, Tweet, Like
+from typing import List, Optional
+from app.models import User, Tweet
 
 
 class BasicResponse(BaseModel):
