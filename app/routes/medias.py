@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, UploadFile
-from app import MediaResponse, upload_media
+from fastapi import APIRouter, Depends
+from app.schemas import MediaResponse
+from app.dependencies import upload_media
 
 router = APIRouter(prefix="/api/medias", tags=["medias"])
 
