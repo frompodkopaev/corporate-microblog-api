@@ -1,4 +1,4 @@
-from sqlalchemy import String, ForeignKey, UniqueConstraint
+from sqlalchemy import String, ForeignKey,Index, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import bcrypt
 
@@ -65,6 +65,8 @@ class Follow(Base):
 
     __table_args__ = (
         UniqueConstraint("follower_id", "following_id", name="uq_follower_following"),
+        Index("ix_follow_follower_following", "follower_id", "following_id"),
+        Index("ix_follow_following_follower", "following_id", "follower_id"),
     )
 
 
@@ -103,6 +105,10 @@ class ApiKey(Base):
 
     def verify_key(self, key: str) -> bool:
         return bcrypt.checkpw(key.encode(), self.key_hash.encode())
+
+    __table_args__ = (
+        Index("ix_apikey_user_prefix", "user_id", "key_prefix"),
+    )
 
 
 class Tweet(Base):
@@ -163,4 +169,6 @@ class Like(Base):
 
     __table_args__ = (
         UniqueConstraint('tweet_id', 'user_id', name='uq_like_tweet_user'),
+        Index("ix_like_tweet_user", "tweet_id", "user_id"),
+        Index("ix_like_user_tweet", "user_id", "tweet_id"),
     )

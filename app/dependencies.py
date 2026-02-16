@@ -61,7 +61,6 @@ def get_media_service_cached(db: AsyncSession) -> MediaService:
     return MediaService(db)
 
 
-# Dependency for service injection
 def get_service(service_class):
     """Generic factory for services with caching"""
     service_cache = {}
@@ -158,8 +157,7 @@ async def delete_tweet(
 async def upload_media(
     file: UploadFile = File(...),
     media_service: MediaService = Depends(get_media_service),
-    current_user: User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
+    current_user: User = Depends(get_current_user)
 ) -> int:
     """Dependency for file upload"""
     return await media_service.upload_file(current_user, file)
