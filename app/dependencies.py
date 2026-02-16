@@ -1,5 +1,6 @@
 from typing import AsyncGenerator, Optional, List
 from fastapi import Depends, Header, HTTPException, status, UploadFile, File
+from functools import lru_cache
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import AsyncSessionFabric, Base, engine
@@ -36,13 +37,56 @@ async def get_api_key(api_key: Optional[str] = Header(None, alias="api-key")) ->
     return api_key
 
 
+@lru_cache(maxsize=128)
+def get_user_service_cached(db: AsyncSession) -> UserService:
+    """Cached factory for UserService"""
+    return UserService(db)
 
-async def authenticate_user(
+
+@lru_cache(maxsize=128)
+def get_api_key_service_cached(db: AsyncSession) -> ApiKeyService:
+    """Cached factory for ApiKeyService"""
+    return ApiKeyService(db)
+
+
+@lru_cache(maxsize=128)
+def get_tweet_service_cached(db: AsyncSession) -> TweetService:
+    """Cached factory for TweetService"""
+    return TweetService(db)
+
+
+@lru_cache(maxsize=128)
+def get_media_service_cached(db: AsyncSession) -> MediaService:
+    """Cached factory for MediaService"""
+    return MediaService(db)
+
+
+def get_service(service_class):
+    """Generic factory for services with caching"""
+    service_cache = {}
+
+    async def dependency(db: AsyncSession = Depends(get_db)):
+        # Use session id as cache key
+        cache_key = id(db)
+        if cache_key not in service_cache:
+            service_cache[cache_key] = service_class(db)
+        return service_cache[cache_key]
+
+    return dependency
+
+
+# Shortcut dependencies
+get_user_service = get_service(UserService)
+get_api_key_service = get_service(ApiKeyService)
+get_tweet_service = get_service(TweetService)
+get_media_service = get_service(MediaService)
+
+
+async def get_current_user(
         api_key: str = Depends(get_api_key),
-        db: AsyncSession = Depends(get_db)
+        api_key_service = Depends(get_api_key_service)
 ) -> User:
-    apy_key_service = ApiKeyService(db)
-    user = await apy_key_service.authenticate(api_key)
+    user = await api_key_service.authenticate(api_key)
 
     if not user:
         raise HTTPException(
@@ -54,86 +98,69 @@ async def authenticate_user(
 
 async def get_user_by_id(
         user_id: int,
-        user: User = Depends(authenticate_user),
-        db: AsyncSession = Depends(get_db)
+        user_service: UserService = Depends(get_user_service),
+        current_user: User = Depends(get_current_user)
 ) -> User:
-        user_service = UserService(db)
-        requested_user = await user_service.get_user(user, user_id)
+        requested_user = await user_service.get_user(current_user, user_id)
         return requested_user
 
 async def follow_user(
         user_id: int,
-        user: User = Depends(authenticate_user),
-        db: AsyncSession = Depends(get_db)
+        user_service: UserService = Depends(get_user_service),
+        current_user: User = Depends(get_current_user)
 ) -> bool:
-    user_service = UserService(db)
-    result = await user_service.follow_user(user, user_id)
-    return result
+    return await user_service.follow_user(current_user, user_id)
 
 async def unfollow_user(
         user_id: int,
-        user: User = Depends(authenticate_user),
-        db: AsyncSession = Depends(get_db)
+        user_service: UserService = Depends(get_user_service),
+        current_user: User = Depends(get_current_user)
 ) -> bool:
-    user_service = UserService(db)
-    result = await user_service.unfollow_user(user, user_id)
-    return result
+    return await user_service.unfollow_user(current_user, user_id)
 
 async def like_tweet(
-        tweet_id:int,
-        user: User = Depends(authenticate_user),
-        db: AsyncSession = Depends(get_db)
+        tweet_id: int,
+        user_service: UserService = Depends(get_user_service),
+        current_user: User = Depends(get_current_user)
 ) -> bool:
-    user_service = UserService(db)
-    result = await user_service.like_tweet(user, tweet_id)
-    return result
+    return await user_service.like_tweet(current_user, tweet_id)
 
 async def unlike_tweet(
         tweet_id: int,
-        user: User = Depends(authenticate_user),
-        db: AsyncSession = Depends(get_db)
+        user_service: UserService = Depends(get_user_service),
+        current_user: User = Depends(get_current_user)
 ) -> bool:
-    user_service = UserService(db)
-    result = await user_service.unlike_tweet(user, tweet_id)
-    return result
+    return await user_service.unlike_tweet(current_user, tweet_id)
+
+async def get_user_feed(
+        user_service: UserService = Depends(get_user_service),
+        current_user: User = Depends(get_current_user)
+) -> List[Tweet]:
+    return await user_service.get_tweets_feed_list(current_user)
 
 
 async def create_tweet(
         tweet_schema: TweetCreate,
-        user: User = Depends(authenticate_user),
-        db: AsyncSession = Depends(get_db)
+        tweet_service: TweetService = Depends(get_tweet_service),
+        current_user: User = Depends(get_current_user)
 ) -> int:
-    tweet_service = TweetService(db)
-    tweet_id = await tweet_service.create_tweet(user, tweet_schema.tweet_data, tweet_schema.media_ids)
-    return tweet_id
+    return await tweet_service.create_tweet(current_user, tweet_schema.tweet_data, tweet_schema.media_ids)
 
 async def delete_tweet(
         tweet_id:int,
-        user: User = Depends(authenticate_user),
-        db: AsyncSession = Depends(get_db)
+        tweet_service: TweetService = Depends(get_tweet_service),
+        current_user: User = Depends(get_current_user)
 ) -> bool:
-    tweet_service = TweetService(db)
-    result = await tweet_service.delete_tweet(user, tweet_id)
-    return result
-
-
-async def get_user_feed(
-        user: User = Depends(authenticate_user),
-        db: AsyncSession = Depends(get_db)
-) -> List[Tweet]:
-    user_service = UserService(db)
-    tweet_list = await user_service.get_tweets_feed_list(user)
-    return tweet_list
+    return await tweet_service.delete_tweet(current_user, tweet_id)
 
 
 async def upload_media(
     file: UploadFile = File(...),
-    user: User = Depends(authenticate_user),
-    db: AsyncSession = Depends(get_db)
+    media_service: MediaService = Depends(get_media_service),
+    current_user: User = Depends(get_current_user)
 ) -> int:
     """Dependency for file upload"""
-    media_service = MediaService(db)
-    return await media_service.upload_file(user, file)
+    return await media_service.upload_file(current_user, file)
 
 async def pagination_params(skip: int = 0, limit: int = 100) -> dict:
     return {"skip": skip, "limit": limit}
