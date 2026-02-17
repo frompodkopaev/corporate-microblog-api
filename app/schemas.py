@@ -8,13 +8,6 @@ class BasicResponse(BaseModel):
     result: bool = True
 
 
-class ErrorResponse(BaseModel):
-    """Error response"""
-    result: bool = False
-    error_type: str
-    error_message: str
-
-
 class TweetCreate(BaseModel):
     """Tweet creation schema"""
     tweet_data: str = Field(...,alias="content", min_length=1, max_length=1000)
