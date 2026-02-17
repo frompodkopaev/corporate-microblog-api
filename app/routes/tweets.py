@@ -18,19 +18,19 @@ async def create_new_tweet(
 ) -> TweetResponse:
     return TweetResponse(result=True, tweet_id=tweet_id)
 
-@router.delete("/{id}", response_model=BasicResponse)
+@router.delete("/{tweet_id}", response_model=BasicResponse)
 async def delete_tweet_by_id(
         result: bool = Depends(delete_tweet)
 ) -> BasicResponse:
     return BasicResponse(result=result)
 
-@router.post("/{id}/likes", response_model=BasicResponse)
+@router.post("/{tweet_id}/likes", response_model=BasicResponse)
 async def like_tweet_by_id(
         result: bool = Depends(like_tweet)
 ) -> BasicResponse:
     return BasicResponse(result=result)
 
-@router.delete("/{id}/likes", response_model=BasicResponse)
+@router.delete("/{tweet_id}/likes", response_model=BasicResponse)
 async def unlike_tweet_by_id(
         result: bool = Depends(unlike_tweet)
 ) -> BasicResponse:

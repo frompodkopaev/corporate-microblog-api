@@ -9,14 +9,14 @@ router = APIRouter(prefix="/api/users", tags=["users"])
 async def get_current_user_info(user: User= Depends(get_current_user)) -> UserResponse:
     return await UserResponse.create(user)
 
-@router.get("/{id}", response_model=UserResponse)
+@router.get("/{user_id}", response_model=UserResponse)
 async def get_user_info_by_id(
         user_id: int,
         user: User= Depends(get_user_by_id)
 ) -> UserResponse:
     return await UserResponse.create(user)
 
-@router.post("/{id}/follow", response_model=BasicResponse)
+@router.post("/{user_id}/follow", response_model=BasicResponse)
 async def follow_user_by_id(
         user_id: int,
         result: bool = Depends(follow_user)
@@ -24,7 +24,7 @@ async def follow_user_by_id(
     return BasicResponse(result=result)
 
 
-@router.delete("/{id}/follow", response_model=BasicResponse)
+@router.delete("/{user_id}/follow", response_model=BasicResponse)
 async def unfollow_user_by_id(
         user_id: int,
         result: bool = Depends(unfollow_user)
