@@ -7,6 +7,7 @@ from app.database import AsyncSessionFabric, Base, engine
 from app.models import User, Tweet
 from app.schemas import TweetCreate
 from app.services import UserService, ApiKeyService, TweetService, MediaService
+from app.core.exceptions import UnauthorizedException
 
 
 async def init_db():
@@ -30,10 +31,7 @@ async def close_db():
 
 async def get_api_key(api_key: Optional[str] = Header(None, alias="api-key")) -> str:
     if not api_key:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key is required"
-        )
+        raise UnauthorizedException("API key is required")
     return api_key
 
 
@@ -66,7 +64,6 @@ def get_service(service_class):
     service_cache = {}
 
     async def dependency(db: AsyncSession = Depends(get_db)):
-        # Use session id as cache key
         cache_key = id(db)
         if cache_key not in service_cache:
             service_cache[cache_key] = service_class(db)
@@ -75,7 +72,6 @@ def get_service(service_class):
     return dependency
 
 
-# Shortcut dependencies
 get_user_service = get_service(UserService)
 get_api_key_service = get_service(ApiKeyService)
 get_tweet_service = get_service(TweetService)
@@ -89,10 +85,7 @@ async def get_current_user(
     user = await api_key_service.authenticate(api_key)
 
     if not user:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid API key"
-        )
+        raise UnauthorizedException("Invalid API key")
 
     return user
 
@@ -161,6 +154,3 @@ async def upload_media(
 ) -> int:
     """Dependency for file upload"""
     return await media_service.upload_file(current_user, file)
-
-async def pagination_params(skip: int = 0, limit: int = 100) -> dict:
-    return {"skip": skip, "limit": limit}

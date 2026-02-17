@@ -11,6 +11,13 @@ from sqlalchemy.orm import selectinload
 import hashlib
 
 from app.models import ApiKey, User, Follow, Tweet, Media, Like
+from app.core.exceptions import (
+    NotFoundException,
+    ConflictException,
+    ValidationException,
+    BusinessLogicException,
+    InsufficientPermissionsException
+)
 
 
 class UserService:
@@ -25,13 +32,13 @@ class UserService:
 
         requested_user: Optional[User] = await self.db.get(User, user_id)
         if not requested_user:
-            raise ValueError("User not found")
+            raise NotFoundException("User", user_id)
 
         return requested_user
 
     async def follow_user(self, user: User, following_id: int) -> bool:
         if following_id == user.id:
-            raise ValueError("User cannot follow himself")
+            raise BusinessLogicException("User cannot follow himself")
 
         stmt = (
             select(User, Follow)
@@ -49,28 +56,42 @@ class UserService:
         row = result.first()
 
         if not row:
-            raise ValueError("User not found")
+            raise NotFoundException("User", following_id)
 
         user_data, existing_follow = row
         if existing_follow:
-            raise ValueError("Already following this user")
+            raise ConflictException("Already following this user")
 
         follow = Follow(follower_id=user.id, following_id=following_id)
         self.db.add(follow)
         return True
 
     async def unfollow_user(self, user, following_id: int) -> bool:
-        result = await self.db.execute(
-            select(Follow).where(
-                Follow.follower_id == user.id,
-                Follow.following_id == following_id
+        if following_id == user.id:
+            raise BusinessLogicException("User cannot unfollow himself")
+
+        stmt = (
+            select(User, Follow)
+            .outerjoin(
+                Follow,
+                and_(
+                    Follow.follower_id == user.id,
+                    Follow.following_id == following_id
+                )
             )
+            .where(User.id == following_id)
         )
 
-        follow = result.scalar_one_or_none()
-        if not follow:
-            return False
+        result = await self.db.execute(stmt)
+        row = result.first()
 
+        if not row:
+            raise NotFoundException("User", following_id)
+
+        user_data, existing_follow = row
+        if not existing_follow:
+            raise ConflictException("Not following this user")
+        await self.db.delete(existing_follow)
         return True
 
     async def like_tweet(self, user: User, tweet_id: int) -> bool:
@@ -87,10 +108,10 @@ class UserService:
         tweet = result.scalar_one_or_none()
 
         if not tweet:
-            raise ValueError("Tweet not found")
+            raise NotFoundException("Tweet", tweet_id)
 
         if any(like.user_id == user.id for like in tweet.likes):
-            raise ValueError("Tweet already liked")
+            raise ConflictException("Tweet already liked")
 
         new_like = Like(tweet_id=tweet_id, user_id=user.id)
         self.db.add(new_like)
@@ -116,12 +137,12 @@ class UserService:
         row = result.first()
 
         if not row:
-            raise ValueError("Tweet not found")
+            raise NotFoundException("Tweet", tweet_id)
 
         tweet, like = row
 
         if not like:
-            raise ValueError("Tweet not liked")
+            raise ConflictException("Tweet not liked")
 
         await self.db.delete(like)
 
@@ -216,12 +237,12 @@ class TweetService:
             tweet_media_ids: Optional[List[int]]=None
     ) -> int:
         if not tweet_data or not tweet_data.strip():
-            raise ValueError("Tweet content cannot be empty")
+            raise ValidationException("Tweet content cannot be empty")
 
         content = tweet_data.strip()
 
         if len(content) > 1000:
-            raise ValueError("Tweet content too long (max 1000 characters)")
+            raise ValidationException("Tweet content too long (max 1000 characters)")
 
         new_tweet = Tweet(user_id=user.id, content=content)
 
@@ -245,10 +266,10 @@ class TweetService:
         result = await self.db.execute(stmt)
         tweet: Optional[Tweet|None] = result.scalar_one_or_none()
         if not tweet:
-            raise ValueError("Tweet not found")
+            raise NotFoundException("Tweet", tweet_id)
 
         if tweet.user_id != user.id:
-            raise ValueError("User not the author of this tweet")
+            raise InsufficientPermissionsException("User not the author of this tweet")
 
         return True
 
@@ -292,10 +313,10 @@ class MediaService:
     async def _validate_file(self, file: UploadFile):
         """Validate uploaded file"""
         if file.content_type not in self.ALLOWED_TYPES:
-            raise HTTPException(400, f"File type {file.content_type} not allowed")
+            raise BusinessLogicException(f"File type {file.content_type} not allowed")
 
         if file.size and file.size > self.MAX_FILE_SIZE:
-            raise HTTPException(400, f"File too large")
+            raise BusinessLogicException(f"File too large")
 
     def _generate_file_path(self, user_id: int, filename: Optional[str|None]) -> Path:
         """Generate unique file path"""
