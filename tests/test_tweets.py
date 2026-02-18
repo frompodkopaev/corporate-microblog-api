@@ -1,40 +1,10 @@
 import pytest
-from fastapi import FastAPI, Depends
-from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from app.routes import tweets
 from app.schemas import BasicResponse, TweetResponse, TweetFeed
-from app.dependencies import create_tweet, delete_tweet, like_tweet, unlike_tweet, get_user_feed
 from app.core.exceptions import NotFoundException, ConflictException
 from app.models import Tweet
-
-
-# ========== Фикстуры ==========
-
-@pytest.fixture
-def app():
-    """Фикстура создания приложения для тестов"""
-    app = FastAPI()
-    app.include_router(tweets.router)
-    return app
-
-
-@pytest.fixture
-def client(app):
-    """Фикстура тестового клиента"""
-    return TestClient(app)
-
-
-@pytest.fixture
-def mock_tweet():
-    """Фикстура мок-твита"""
-    tweet = MagicMock(spec=Tweet)
-    tweet.id = 1
-    tweet.content = "Test tweet"
-    tweet.user_id = 1
-    return tweet
-
 
 # ========== Тесты роутера ==========
 
@@ -60,10 +30,10 @@ def test_router_paths():
     assert "/api/tweets/" in paths, "Path /api/tweets/ should exist"
 
     # Проверяем наличие пути для удаления
-    assert "/api/tweets/{id}" in paths, "Path /api/tweets/{{id}} should exist"
+    assert "/api/tweets/{tweet_id}" in paths, "Path /api/tweets/{{tweet_id}} should exist"
 
     # Проверяем наличие пути для лайков
-    assert "/api/tweets/{id}/likes" in paths, "Path /api/tweets/{{id}}/likes should exist"
+    assert "/api/tweets/{tweet_id}/likes" in paths, "Path /api/tweets/{{tweet_id}}/likes should exist"
 
     # Проверяем, что всего 5 роутов (2 для /, 1 для /{id}, 2 для /{id}/likes)
     assert len(paths) == 5, f"Expected 5 routes, got {len(paths)}"
@@ -83,14 +53,14 @@ def test_router_methods():
         f"Expected GET and POST for /api/tweets/, got {path_methods['/api/tweets/']}"
 
     # Проверяем путь для удаления
-    assert '/api/tweets/{id}' in path_methods, "Path /api/tweets/{{id}} not found"
-    assert path_methods['/api/tweets/{id}'] == {'DELETE'}, \
-        f"Expected DELETE for /api/tweets/{{id}}, got {path_methods['/api/tweets/{id}']}"
+    assert '/api/tweets/{tweet_id}' in path_methods, "Path /api/tweets/{{tweet_id}} not found"
+    assert path_methods['/api/tweets/{tweet_id}'] == {'DELETE'}, \
+        f"Expected DELETE for /api/tweets/{{tweet_id}}, got {path_methods['/api/tweets/{tweet_id}']}"
 
     # Проверяем путь для лайков
-    assert '/api/tweets/{id}/likes' in path_methods, "Path /api/tweets/{{id}}/likes not found"
-    assert path_methods['/api/tweets/{id}/likes'] == {'POST', 'DELETE'}, \
-        f"Expected POST and DELETE for /api/tweets/{{id}}/likes, got {path_methods['/api/tweets/{id}/likes']}"
+    assert '/api/tweets/{tweet_id}/likes' in path_methods, "Path /api/tweets/{{tweet_id}}/likes not found"
+    assert path_methods['/api/tweets/{tweet_id}/likes'] == {'POST', 'DELETE'}, \
+        f"Expected POST and DELETE for /api/tweets/{{tweet_id}}/likes, got {path_methods['/api/tweets/{tweet_id}/likes']}"
 
     # Проверяем общее количество уникальных путей
     assert len(path_methods) == 3, f"Expected 3 unique paths, got {len(path_methods)}"

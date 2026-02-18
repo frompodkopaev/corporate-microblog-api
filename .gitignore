@@ -1,5 +1,8 @@
 /.idea/
 /.venv/
 /.project_data/
+/.htmlcov/
+/.uploads/
+.coverage
 .env
 scripts/test_users.json

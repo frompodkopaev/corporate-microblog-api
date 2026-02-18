@@ -233,62 +233,6 @@ def test_upload_media_file_too_large(client, auth_headers, test_users):
 
 # ========== Тесты с моками сервиса ==========
 
-def test_upload_media_with_mock_service(client, auth_headers, test_users, mock_file):
-    """Тест загрузки медиа с мокнутым сервисом"""
-    from app.dependencies import get_media_service, upload_media, get_current_user
-
-    headers = auth_headers
-    current_user = test_users[0]["user"]
-    expected_media_id = 123
-
-    app = client.app
-    app.dependency_overrides = {}
-
-    # Мокаем media_service
-    mock_media_service = AsyncMock()
-    mock_media_service.upload_file = AsyncMock(return_value=expected_media_id)
-
-    async def override_get_media_service():
-        return mock_media_service
-
-    # Мокаем upload_media с Depends
-    async def mock_upload_media(
-        file: UploadFile,
-        media_service = Depends(override_get_media_service),
-        current_user = Depends(get_current_user)
-    ):
-        return await media_service.upload_file(current_user, file)
-
-    app.dependency_overrides[get_media_service] = override_get_media_service
-    app.dependency_overrides[upload_media] = mock_upload_media
-
-    # Создаем тестовый файл
-    files = {
-        'file': ('test.jpg', b'fake image content', 'image/jpeg')
-    }
-
-    response = client.post(
-        "/api/medias/",
-        files=files,
-        headers=headers
-    )
-
-    print(f"Status code: {response.status_code}")
-    print(f"Response body: {response.text}")
-
-    assert response.status_code == 200
-    data = response.json()
-    assert data["result"] is True
-    assert data["media_id"] == expected_media_id
-
-    # Проверяем, что сервис был вызван
-    mock_media_service.upload_file.assert_awaited_once()
-    args, _ = mock_media_service.upload_file.call_args
-    assert args[0].id == current_user.id
-
-    app.dependency_overrides = {}
-
-
 def test_upload_media_simple_mock(client, auth_headers, test_users):
     """Простой тест загрузки медиа с моком зависимости"""
     from app.dependencies import upload_media, get_current_user

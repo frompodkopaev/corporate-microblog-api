@@ -1,4 +1,9 @@
-from sqlalchemy import String, ForeignKey,Index, UniqueConstraint
+"""
+Database models module for the Corporate Microblog API.
+Defines SQLAlchemy ORM models with relationships and constraints.
+"""
+
+from sqlalchemy import String, ForeignKey, Index, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import bcrypt
 
@@ -6,7 +11,7 @@ from app.database import Base
 
 
 class User(Base):
-    """ Model for user"""
+    """Model for user."""
     __tablename__ = "users"
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
@@ -47,8 +52,9 @@ class User(Base):
         lazy="selectin"
     )
 
+
 class Follow(Base):
-    """Model for follow relationships between users"""
+    """Model for follow relationships between users."""
     __tablename__ = "followings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -71,7 +77,7 @@ class Follow(Base):
 
 
 class ApiKey(Base):
-    """Model for API key"""
+    """Model for API key."""
     __tablename__ = "api_keys"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -100,10 +106,12 @@ class ApiKey(Base):
 
     @staticmethod
     def hash_key(key: str) -> str:
+        """Hash an API key using bcrypt."""
         salt = bcrypt.gensalt()
         return bcrypt.hashpw(key.encode(), salt).decode()
 
     def verify_key(self, key: str) -> bool:
+        """Verify a raw API key against the stored hash."""
         return bcrypt.checkpw(key.encode(), self.key_hash.encode())
 
     __table_args__ = (
@@ -112,7 +120,7 @@ class ApiKey(Base):
 
 
 class Tweet(Base):
-    """Model fot tweets"""
+    """Model for tweets."""
     __tablename__ = "tweets"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -139,7 +147,7 @@ class Tweet(Base):
 
 
 class Media(Base):
-    """Model for media"""
+    """Model for media."""
     __tablename__ = "medias"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -153,7 +161,7 @@ class Media(Base):
 
 
 class Like(Base):
-    """Model for likes"""
+    """Model for likes."""
     __tablename__ = "likes"
 
     tweet_id: Mapped[int] = mapped_column(

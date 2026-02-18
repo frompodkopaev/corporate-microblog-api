@@ -1,4 +1,9 @@
-from fastapi import FastAPI, Request, status
+"""
+Exception handlers for the Corporate Microblog API.
+Provides consistent error responses for different types of exceptions.
+"""
+
+from fastapi import Request, status
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
 from sqlalchemy.exc import IntegrityError, DataError
@@ -6,10 +11,9 @@ from pydantic import ValidationError
 
 from app.core.exceptions import AppException
 
+
 async def app_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """
-    Handler for inner app exceptions
-    """
+    """Handler for inner app exceptions."""
     if isinstance(exc, AppException):
         return JSONResponse(
             status_code=exc.status_code,
@@ -37,9 +41,7 @@ async def validation_exception_handler(
         request: Request,
         exc: Exception
 ) -> JSONResponse:
-    """
-    Handler for Pydantic/FastAPI errors
-    """
+    """Handler for Pydantic/FastAPI validation errors."""
     if isinstance(exc, (RequestValidationError, ValidationError)):
         error_message = "|".join(
             [":".join(
@@ -66,10 +68,7 @@ async def sqlalchemy_exception_handler(
         request: Request,
         exc: Exception
 ) -> JSONResponse:
-    """
-    Handler for SQLAlchemy errors
-    """
-
+    """Handler for SQLAlchemy errors."""
     if isinstance(exc, IntegrityError):
         error_type = "INTEGRITY_ERROR"
         status_code = status.HTTP_409_CONFLICT
@@ -100,10 +99,7 @@ async def sqlalchemy_exception_handler(
 
 
 async def python_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """
-    Handler for Python exception
-    """
-
+    """Handler for Python exceptions."""
     error_message = "Internal server error"
     if getattr(request.app.state, "debug", False):
         error_message = f"{type(exc).__name__}: {str(exc)}"
@@ -119,10 +115,7 @@ async def python_exception_handler(request: Request, exc: Exception) -> JSONResp
 
 
 async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
-    """
-    Handler for HTTPException
-    """
-
+    """Handler for HTTPException."""
     return JSONResponse(
         status_code=exc.status_code if hasattr(exc, 'status_code') else 500,
         content={
