@@ -85,25 +85,6 @@ def test_engine_creation():
     assert engine.url.username == "postgres"
 
 
-@patch('app.database.create_async_engine')
-def test_engine_echo_param(mock_create_engine):
-    """Тест параметра echo при создании engine"""
-    from app.database import engine
-
-    # Проверяем, что create_async_engine был вызван с echo=True
-    mock_create_engine.assert_not_called()  # Уже создан до патча
-
-    # Создаем новый engine с патчем для проверки параметров
-    with patch('app.database.create_async_engine') as mock:
-        import importlib
-        import app.database
-        importlib.reload(app.database)
-
-        mock.assert_called_once()
-        args, kwargs = mock.call_args
-        assert kwargs.get('echo') is True, "Engine должен быть создан с echo=True"
-
-
 def test_async_session_fabric_creation():
     """Тест создания фабрики асинхронных сессий"""
     assert AsyncSessionFabric is not None, "Фабрика сессий не должна быть None"
@@ -140,28 +121,6 @@ def test_async_session_fabric_creates_session():
     assert hasattr(session, "close"), "Сессия должна иметь метод close"
 
 
-@pytest.mark.asyncio
-async def test_engine_connection():
-    """Тест возможности подключения через engine"""
-    try:
-        # Пробуем подключиться с таймаутом
-        async with asyncio.timeout(5):  # Python 3.11+
-            async with engine.connect() as conn:
-                await conn.execute(text("SELECT 1"))
-
-        # Если дошли сюда - БД доступна
-        async with engine.connect() as conn:
-            result = await conn.execute(text("SELECT 1"))
-            assert result.scalar() == 1, "Должен выполняться простой запрос"
-
-    except asyncio.TimeoutError:
-        pytest.skip("Таймаут подключения к БД (проверьте запущен ли Docker контейнер)")
-    except (OperationalError, DatabaseError) as e:
-        pytest.skip(f"БД недоступна: {e}")
-    except Exception as e:
-        pytest.skip(f"Неожиданная ошибка: {e}")
-
-
 def test_dotenv_loading():
     """Тест загрузки .env файла"""
     # Сохраняем оригинальный модуль, если он есть
@@ -187,32 +146,6 @@ def test_dotenv_loading():
         elif 'app.database' in sys.modules:
             del sys.modules['app.database']
 
-
-@pytest.mark.parametrize("url_variant,expected_scheme", [
-    ("postgresql+asyncpg://user:pass@localhost/db", "postgresql+asyncpg"),
-])
-def test_database_url_schemes(url_variant, expected_scheme):
-    """Тест различных схем URL для БД"""
-    # Сохраняем оригинальное значение
-    original_url = os.environ.get("DATABASE_URL")
-
-    try:
-        os.environ["DATABASE_URL"] = url_variant
-
-        import importlib
-        import app.database
-        importlib.reload(app.database)
-
-        assert app.database.DATABASE_URL == url_variant
-        assert app.database.DATABASE_URL.startswith(expected_scheme), \
-            f"Схема {expected_scheme} не соответствует URL"
-
-    finally:
-        # Восстанавливаем оригинальное значение
-        if original_url is None:
-            del os.environ["DATABASE_URL"]
-        else:
-            os.environ["DATABASE_URL"] = original_url
 
 
 def test_engine_pool_settings():

@@ -10,34 +10,6 @@ from app.dependencies import get_current_user, get_user_by_id, follow_user, unfo
 from app.core.exceptions import NotFoundException, ConflictException
 
 
-# ========== Фикстуры ==========
-
-@pytest.fixture
-def app():
-    """Фикстура создания приложения для тестов"""
-    app = FastAPI()
-    app.include_router(users.router)
-    return app
-
-
-@pytest.fixture
-def client(app):
-    """Фикстура тестового клиента"""
-    return TestClient(app)
-
-
-@pytest.fixture
-def mock_current_user():
-    """Фикстура мок-пользователя"""
-    return User(id=1, name="Test User")
-
-
-@pytest.fixture
-def mock_user_response():
-    """Фикстура мок-ответа пользователя"""
-    return MagicMock(spec=UserResponse)
-
-
 # ========== Тесты роутера ==========
 
 def test_router_prefix():

@@ -1,3 +1,8 @@
+"""
+Main application module for the Corporate Microblog API.
+Configures FastAPI application, exception handlers, and lifecycle management.
+"""
+
 from fastapi import FastAPI
 from fastapi.exceptions import RequestValidationError, HTTPException
 from sqlalchemy.exc import SQLAlchemyError
@@ -18,9 +23,11 @@ from app.core.error_handlers import (
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Manage application lifecycle events."""
     await init_db()
     yield
     await close_db()
+
 
 app = FastAPI(
     title="Corporative microblog API",

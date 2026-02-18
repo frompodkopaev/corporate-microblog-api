@@ -1,7 +1,12 @@
+"""
+Service layer module for the Corporate Microblog API.
+Contains business logic and database operations.
+"""
+
 import aiofiles
-from fastapi import UploadFile, HTTPException
+from fastapi import UploadFile
 from time import time
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Tuple
 from uuid import uuid4
 from datetime import datetime
 from pathlib import Path
@@ -21,12 +26,14 @@ from app.core.exceptions import (
 
 
 class UserService:
-    """Service for working with User model in routes"""
+    """Service for working with User model in routes."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
+        """Initialize UserService with database session."""
         self.db = db
 
     async def get_user(self, user: User, user_id: int) -> User:
+        """Get user by ID with access control."""
         if user_id == user.id:
             return user
 
@@ -37,6 +44,7 @@ class UserService:
         return requested_user
 
     async def follow_user(self, user: User, following_id: int) -> bool:
+        """Follow another user."""
         if following_id == user.id:
             raise BusinessLogicException("User cannot follow himself")
 
@@ -67,6 +75,7 @@ class UserService:
         return True
 
     async def unfollow_user(self, user, following_id: int) -> bool:
+        """Unfollow a user."""
         if following_id == user.id:
             raise BusinessLogicException("User cannot unfollow himself")
 
@@ -95,6 +104,7 @@ class UserService:
         return True
 
     async def like_tweet(self, user: User, tweet_id: int) -> bool:
+        """Like a tweet."""
         stmt = (
             select(Tweet)
             .where(Tweet.id == tweet_id)
@@ -120,6 +130,7 @@ class UserService:
         return True
 
     async def unlike_tweet(self, user: User, tweet_id: int) -> bool:
+        """Remove like from a tweet."""
         stmt = (
             select(Tweet, Like)
             .outerjoin(
@@ -151,7 +162,8 @@ class UserService:
 
         return True
 
-    async def get_tweets_feed_list(self, user:User) -> List[Tweet]:
+    async def get_tweets_feed_list(self, user: User) -> List[Tweet]:
+        """Get feed of tweets from followed users."""
         stmt = (
             select(Tweet)
             .join(Follow, Follow.following_id == Tweet.user_id)
@@ -174,14 +186,16 @@ class UserService:
 
 
 class ApiKeyService:
-    """Srvice for authentication by api-key"""
+    """Service for authentication by api-key."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
+        """Initialize ApiKeyService with database session."""
         self.db = db
         self._cache: Dict = {}
         self._cache_ttl = 300
 
     async def authenticate(self, api_key: str) -> Optional[User]:
+        """Authenticate user by API key."""
         cache_key = hashlib.md5(api_key.encode()).hexdigest()
         cached_result = self._check_cache(cache_key)
         if cached_result is not None:
@@ -194,7 +208,7 @@ class ApiKeyService:
             .where(
                 and_(
                     ApiKey.key_prefix == key_prefix,
-                    ApiKey.user.has()  # Быстрая проверка через индекс
+                    ApiKey.user.has()
                 )
             )
             .options(selectinload(ApiKey.user).load_only(User.id, User.name))
@@ -212,6 +226,7 @@ class ApiKeyService:
         return db_key.user
 
     def _check_cache(self, key: str) -> Optional[User]:
+        """Check cache for existing authentication result."""
         if key in self._cache:
             user, timestamp = self._cache[key]
             if time() - timestamp < self._cache_ttl:
@@ -220,22 +235,25 @@ class ApiKeyService:
                 del self._cache[key]
         return None
 
-    def _add_to_cache(self, key: str, user: Optional[User]):
+    def _add_to_cache(self, key: str, user: Optional[User]) -> None:
+        """Add authentication result to cache."""
         self._cache[key] = (user, time())
 
 
 class TweetService:
-    """Service for working with Tweet model"""
+    """Service for working with Tweet model."""
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
+        """Initialize TweetService with database session."""
         self.db = db
 
     async def create_tweet(
             self,
             user: User,
             tweet_data: str,
-            tweet_media_ids: Optional[List[int]]=None
+            tweet_media_ids: Optional[List[int]] = None
     ) -> int:
+        """Create a new tweet."""
         if not tweet_data or not tweet_data.strip():
             raise ValidationException("Tweet content cannot be empty")
 
@@ -262,9 +280,10 @@ class TweetService:
             user: User,
             tweet_id: int
     ) -> bool:
+        """Delete a tweet."""
         stmt = select(Tweet).where(Tweet.id == tweet_id)
         result = await self.db.execute(stmt)
-        tweet: Optional[Tweet|None] = result.scalar_one_or_none()
+        tweet: Optional[Tweet] = result.scalar_one_or_none()
         if not tweet:
             raise NotFoundException("Tweet", tweet_id)
 
@@ -273,8 +292,9 @@ class TweetService:
 
         return True
 
+
 class MediaService:
-    """Service for media upload and management"""
+    """Service for media upload and management."""
 
     UPLOAD_ROOT = Path("uploads")
     ALLOWED_TYPES = {
@@ -283,7 +303,8 @@ class MediaService:
     }
     MAX_FILE_SIZE = 10 * 1024 * 1024
 
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession) -> None:
+        """Initialize MediaService with database session."""
         self.db = db
         self.UPLOAD_ROOT.mkdir(exist_ok=True)
 
@@ -292,7 +313,7 @@ class MediaService:
             user: User,
             file: UploadFile
     ) -> int:
-        """Upload file and save to database"""
+        """Upload file and save to database."""
         await self._validate_file(file)
 
         file_path = self._generate_file_path(user.id, file.filename)
@@ -310,16 +331,16 @@ class MediaService:
 
         return media.id
 
-    async def _validate_file(self, file: UploadFile):
-        """Validate uploaded file"""
+    async def _validate_file(self, file: UploadFile) -> None:
+        """Validate uploaded file."""
         if file.content_type not in self.ALLOWED_TYPES:
             raise BusinessLogicException(f"File type {file.content_type} not allowed")
 
         if file.size and file.size > self.MAX_FILE_SIZE:
             raise BusinessLogicException(f"File too large")
 
-    def _generate_file_path(self, user_id: int, filename: Optional[str|None]) -> Path:
-        """Generate unique file path"""
+    def _generate_file_path(self, user_id: int, filename: Optional[str]) -> Path:
+        """Generate unique file path."""
         if not filename:
             base_name = "uploaded_file"
             ext = ".bin"

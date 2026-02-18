@@ -1,3 +1,8 @@
+"""
+Database configuration module for the Corporate Microblog API.
+Sets up SQLAlchemy async engine, session factory, and base model class.
+"""
+
 import os
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine, AsyncAttrs
 from sqlalchemy.orm import DeclarativeBase
@@ -11,8 +16,11 @@ DATABASE_URL = os.getenv(
     "postgresql+asyncpg://postgres:password@localhost:5432/corporative_microblog_api"
 )
 
+
 class Base(AsyncAttrs, DeclarativeBase):
+    """Base class for all database models."""
     pass
+
 
 engine = create_async_engine(DATABASE_URL, echo=True)
 AsyncSessionFabric = async_sessionmaker(
