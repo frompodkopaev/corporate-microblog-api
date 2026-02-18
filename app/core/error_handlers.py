@@ -4,10 +4,10 @@ Provides consistent error responses for different types of exceptions.
 """
 
 from fastapi import Request, status
-from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-from sqlalchemy.exc import IntegrityError, DataError
+from fastapi.responses import JSONResponse
 from pydantic import ValidationError
+from sqlalchemy.exc import DataError, IntegrityError
 
 from app.core.exceptions import AppException
 
@@ -20,9 +20,9 @@ async def app_exception_handler(request: Request, exc: Exception) -> JSONRespons
             content={
                 "result": False,
                 "error_type": exc.error_type,
-                "error_message": exc.error_message
+                "error_message": exc.error_message,
             },
-            headers=exc.headers
+            headers=exc.headers,
         )
     else:
         error_message = str(exc)
@@ -32,22 +32,19 @@ async def app_exception_handler(request: Request, exc: Exception) -> JSONRespons
             content={
                 "result": False,
                 "error_type": error_type,
-                "error_message": error_message
-            }
+                "error_message": error_message,
+            },
         )
 
 
 async def validation_exception_handler(
-        request: Request,
-        exc: Exception
+    request: Request, exc: Exception
 ) -> JSONResponse:
     """Handler for Pydantic/FastAPI validation errors."""
     if isinstance(exc, (RequestValidationError, ValidationError)):
         error_message = "|".join(
-            [":".join(
-                [" -> ".join(str(x) for x in error["loc"]),
-                error["msg"]]
-                )
+            [
+                ":".join([" -> ".join(str(x) for x in error["loc"]), error["msg"]])
                 for error in exc.errors()
             ]
         )
@@ -59,14 +56,13 @@ async def validation_exception_handler(
         content={
             "result": False,
             "error_type": "VALIDATION_ERROR",
-            "error_message": error_message
-        }
+            "error_message": error_message,
+        },
     )
 
 
 async def sqlalchemy_exception_handler(
-        request: Request,
-        exc: Exception
+    request: Request, exc: Exception
 ) -> JSONResponse:
     """Handler for SQLAlchemy errors."""
     if isinstance(exc, IntegrityError):
@@ -90,11 +86,7 @@ async def sqlalchemy_exception_handler(
 
     return JSONResponse(
         status_code=status_code,
-        content={
-            "result": False,
-            "error_type": error_type,
-            "error_message": message
-        }
+        content={"result": False, "error_type": error_type, "error_message": message},
     )
 
 
@@ -109,18 +101,18 @@ async def python_exception_handler(request: Request, exc: Exception) -> JSONResp
         content={
             "result": False,
             "error_type": "INTERNAL_SERVER_ERROR",
-            "error_message": error_message
-        }
+            "error_message": error_message,
+        },
     )
 
 
 async def http_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """Handler for HTTPException."""
     return JSONResponse(
-        status_code=exc.status_code if hasattr(exc, 'status_code') else 500,
+        status_code=exc.status_code if hasattr(exc, "status_code") else 500,
         content={
             "result": False,
             "error_type": "HTTP_ERROR",
-            "error_message": exc.detail if hasattr(exc, 'detail') else str(exc)
-        }
+            "error_message": exc.detail if hasattr(exc, "detail") else str(exc),
+        },
     )

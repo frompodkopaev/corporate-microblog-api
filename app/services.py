@@ -3,26 +3,27 @@ Service layer module for the Corporate Microblog API.
 Contains business logic and database operations.
 """
 
-import aiofiles
-from fastapi import UploadFile
-from time import time
-from typing import Optional, List, Dict, Tuple
-from uuid import uuid4
+import hashlib
 from datetime import datetime
 from pathlib import Path
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, exists, and_, update
-from sqlalchemy.orm import selectinload
-import hashlib
+from time import time
+from typing import Dict, List, Optional
+from uuid import uuid4
 
-from app.models import ApiKey, User, Follow, Tweet, Media, Like
+import aiofiles
+from fastapi import UploadFile
+from sqlalchemy import and_, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
+
 from app.core.exceptions import (
-    NotFoundException,
-    ConflictException,
-    ValidationException,
     BusinessLogicException,
-    InsufficientPermissionsException
+    ConflictException,
+    InsufficientPermissionsException,
+    NotFoundException,
+    ValidationException,
 )
+from app.models import ApiKey, Follow, Like, Media, Tweet, User
 
 
 class UserService:
@@ -53,9 +54,8 @@ class UserService:
             .outerjoin(
                 Follow,
                 and_(
-                    Follow.follower_id == user.id,
-                    Follow.following_id == following_id
-                )
+                    Follow.follower_id == user.id, Follow.following_id == following_id
+                ),
             )
             .where(User.id == following_id)
         )
@@ -84,9 +84,8 @@ class UserService:
             .outerjoin(
                 Follow,
                 and_(
-                    Follow.follower_id == user.id,
-                    Follow.following_id == following_id
-                )
+                    Follow.follower_id == user.id, Follow.following_id == following_id
+                ),
             )
             .where(User.id == following_id)
         )
@@ -108,9 +107,7 @@ class UserService:
         stmt = (
             select(Tweet)
             .where(Tweet.id == tweet_id)
-            .options(
-                selectinload(Tweet.likes.and_(Like.user_id == user.id))
-            )
+            .options(selectinload(Tweet.likes.and_(Like.user_id == user.id)))
             .with_for_update()
         )
 
@@ -133,13 +130,7 @@ class UserService:
         """Remove like from a tweet."""
         stmt = (
             select(Tweet, Like)
-            .outerjoin(
-                Like,
-                and_(
-                    Like.tweet_id == Tweet.id,
-                    Like.user_id == user.id
-                )
-            )
+            .outerjoin(Like, and_(Like.tweet_id == Tweet.id, Like.user_id == user.id))
             .where(Tweet.id == tweet_id)
             .with_for_update()
         )
@@ -167,16 +158,11 @@ class UserService:
         stmt = (
             select(Tweet)
             .join(Follow, Follow.following_id == Tweet.user_id)
-            .where(
-                and_(
-                    Follow.follower_id == user.id,
-                    Tweet.user_id != user.id
-                )
-            )
+            .where(and_(Follow.follower_id == user.id, Tweet.user_id != user.id))
             .options(
                 selectinload(Tweet.author),
                 selectinload(Tweet.media),
-                selectinload(Tweet.likes).selectinload(Like.user)
+                selectinload(Tweet.likes).selectinload(Like.user),
             )
             .order_by(Tweet.likes_counter.desc())
         )
@@ -205,12 +191,7 @@ class ApiKeyService:
 
         stmt = (
             select(ApiKey)
-            .where(
-                and_(
-                    ApiKey.key_prefix == key_prefix,
-                    ApiKey.user.has()
-                )
-            )
+            .where(and_(ApiKey.key_prefix == key_prefix, ApiKey.user.has()))
             .options(selectinload(ApiKey.user).load_only(User.id, User.name))
         )
 
@@ -248,10 +229,7 @@ class TweetService:
         self.db = db
 
     async def create_tweet(
-            self,
-            user: User,
-            tweet_data: str,
-            tweet_media_ids: Optional[List[int]] = None
+        self, user: User, tweet_data: str, tweet_media_ids: Optional[List[int]] = None
     ) -> int:
         """Create a new tweet."""
         if not tweet_data or not tweet_data.strip():
@@ -275,11 +253,7 @@ class TweetService:
 
         return new_tweet.id
 
-    async def delete_tweet(
-            self,
-            user: User,
-            tweet_id: int
-    ) -> bool:
+    async def delete_tweet(self, user: User, tweet_id: int) -> bool:
         """Delete a tweet."""
         stmt = select(Tweet).where(Tweet.id == tweet_id)
         result = await self.db.execute(stmt)
@@ -298,8 +272,8 @@ class MediaService:
 
     UPLOAD_ROOT = Path("uploads")
     ALLOWED_TYPES = {
-        'image/jpeg': '.jpg',
-        'image/png': '.png',
+        "image/jpeg": ".jpg",
+        "image/png": ".png",
     }
     MAX_FILE_SIZE = 10 * 1024 * 1024
 
@@ -308,23 +282,17 @@ class MediaService:
         self.db = db
         self.UPLOAD_ROOT.mkdir(exist_ok=True)
 
-    async def upload_file(
-            self,
-            user: User,
-            file: UploadFile
-    ) -> int:
+    async def upload_file(self, user: User, file: UploadFile) -> int:
         """Upload file and save to database."""
         await self._validate_file(file)
 
         file_path = self._generate_file_path(user.id, file.filename)
 
-        async with aiofiles.open(file_path, 'wb') as f:
+        async with aiofiles.open(file_path, "wb") as f:
             while chunk := await file.read(1024 * 1024):
                 await f.write(chunk)
 
-        media = Media(
-            link=str(file_path)
-        )
+        media = Media(link=str(file_path))
 
         self.db.add(media)
         await self.db.flush()
@@ -337,12 +305,11 @@ class MediaService:
             raise BusinessLogicException(f"File type {file.content_type} not allowed")
 
         if file.size and file.size > self.MAX_FILE_SIZE:
-            raise BusinessLogicException(f"File too large")
+            raise BusinessLogicException("File too large")
 
     def _generate_file_path(self, user_id: int, filename: Optional[str]) -> Path:
         """Generate unique file path."""
         if not filename:
-            base_name = "uploaded_file"
             ext = ".bin"
         else:
             ext = Path(filename).suffix

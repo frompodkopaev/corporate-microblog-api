@@ -6,6 +6,11 @@
 [![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-4479A1?style=for-the-badge&logo=sqlalchemy)](https://sqlalchemy.org)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker)](https://docker.com)
 
+[![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
+[![Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
+[![Mypy](https://img.shields.io/badge/mypy-checked-blue)](http://mypy-lang.org/)
+[![Imports: isort](https://img.shields.io/badge/imports-isort-1674b1)](https://pycqa.github.io/isort/)
+
 A corporate microblogging platform API that allows users to create posts, follow others, and interact with content in a secure and scalable way.
 
 ## Features
@@ -104,3 +109,13 @@ Once the server is running, you can access:
 | `app/schemas.py` | 100% |
 | `app/services.py` | 100% |
 | **Total** | **100% (492/492)** |
+
+
+### 🔧 Code Quality
+
+This project uses several tools to maintain code quality:
+
+- **Ruff** - Fast Python linter
+- **Black** - Code formatter
+- **isort** - Import sorter
+- **Mypy** - Static type checker

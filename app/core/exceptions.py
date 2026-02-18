@@ -3,7 +3,8 @@ Custom exception classes for the Corporate Microblog API.
 All exceptions inherit from AppException base class.
 """
 
-from typing import Any, Optional, Dict
+from typing import Any, Dict, Optional
+
 from fastapi import HTTPException, status
 
 
@@ -11,11 +12,11 @@ class AppException(HTTPException):
     """Base class for app exceptions."""
 
     def __init__(
-            self,
-            status_code: int,
-            error_type: str,
-            error_message: str,
-            headers: Optional[Dict[str, str]] = None
+        self,
+        status_code: int,
+        error_type: str,
+        error_message: str,
+        headers: Optional[Dict[str, str]] = None,
     ) -> None:
         """Initialize base app exception."""
         self.error_type = error_type
@@ -25,21 +26,23 @@ class AppException(HTTPException):
             detail={
                 "result": False,
                 "error_type": error_type,
-                "error_message": error_message
+                "error_message": error_message,
             },
-            headers=headers
+            headers=headers,
         )
 
 
 class BusinessLogicException(AppException):
     """400 Bad request exception for business logic violations."""
 
-    def __init__(self, message: str, status_code: int = status.HTTP_400_BAD_REQUEST) -> None:
+    def __init__(
+        self, message: str, status_code: int = status.HTTP_400_BAD_REQUEST
+    ) -> None:
         """Initialize business logic exception."""
         super().__init__(
             status_code=status_code,
             error_type="BUSINESS_LOGIC_ERROR",
-            error_message=message
+            error_message=message,
         )
 
 
@@ -52,7 +55,7 @@ class UnauthorizedException(AppException):
             status_code=status.HTTP_401_UNAUTHORIZED,
             error_type="UNAUTHORIZED",
             error_message=message,
-            headers={"WWW-Authenticate": "Bearer"}
+            headers={"WWW-Authenticate": "Bearer"},
         )
 
 
@@ -64,7 +67,7 @@ class InsufficientPermissionsException(AppException):
         super().__init__(
             status_code=status.HTTP_403_FORBIDDEN,
             error_type="INSUFFICIENT_PERMISSIONS",
-            error_message=message
+            error_message=message,
         )
 
 
@@ -79,7 +82,7 @@ class NotFoundException(AppException):
         super().__init__(
             status_code=status.HTTP_404_NOT_FOUND,
             error_type="NOT_FOUND",
-            error_message=message
+            error_message=message,
         )
 
 
@@ -91,7 +94,7 @@ class ConflictException(AppException):
         super().__init__(
             status_code=status.HTTP_409_CONFLICT,
             error_type="CONFLICT",
-            error_message=message
+            error_message=message,
         )
 
 
@@ -103,7 +106,7 @@ class ValidationException(AppException):
         super().__init__(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             error_type="VALIDATION_ERROR",
-            error_message=message
+            error_message=message,
         )
 
 
@@ -115,7 +118,7 @@ class InternalServerErrorException(AppException):
         super().__init__(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             error_type="INTERNAL_SERVER_ERROR",
-            error_message=message
+            error_message=message,
         )
 
 
@@ -127,5 +130,5 @@ class DatabaseException(AppException):
         super().__init__(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             error_type="DATABASE_ERROR",
-            error_message=message
+            error_message=message,
         )
