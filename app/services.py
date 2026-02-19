@@ -12,7 +12,7 @@ from uuid import uuid4
 
 import aiofiles
 from fastapi import UploadFile
-from sqlalchemy import and_, select
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -129,24 +129,28 @@ class UserService:
     async def unlike_tweet(self, user: User, tweet_id: int) -> bool:
         """Remove like from a tweet."""
         stmt = (
-            select(Tweet, Like)
-            .outerjoin(Like, and_(Like.tweet_id == Tweet.id, Like.user_id == user.id))
+            select(Tweet)
             .where(Tweet.id == tweet_id)
+            .options(selectinload(Tweet.likes))
             .with_for_update()
         )
 
         result = await self.db.execute(stmt)
-        row = result.first()
+        tweet = result.scalar_one_or_none()
 
-        if not row:
+        if not tweet:
             raise NotFoundException("Tweet", tweet_id)
 
-        tweet, like = row
+        like_to_delete = None
+        for like in tweet.likes:
+            if like.user_id == user.id:
+                like_to_delete = like
+                break
 
-        if not like:
+        if not like_to_delete:
             raise ConflictException("Tweet not liked")
 
-        await self.db.delete(like)
+        await self.db.delete(like_to_delete)
 
         if tweet.likes_counter > 0:
             tweet.likes_counter -= 1
@@ -157,14 +161,19 @@ class UserService:
         """Get feed of tweets from followed users."""
         stmt = (
             select(Tweet)
-            .join(Follow, Follow.following_id == Tweet.user_id)
-            .where(and_(Follow.follower_id == user.id, Tweet.user_id != user.id))
+            .outerjoin(Follow, Follow.following_id == Tweet.user_id)  # LEFT OUTER JOIN
+            .where(
+                or_(
+                    Follow.follower_id == user.id,  # твиты от подписок
+                    Tweet.user_id == user.id  # собственные твиты
+                )
+            )
             .options(
                 selectinload(Tweet.author),
                 selectinload(Tweet.media),
                 selectinload(Tweet.likes).selectinload(Like.user),
             )
-            .order_by(Tweet.likes_counter.desc())
+            .order_by(Tweet.id.desc(), Tweet.likes_counter.desc())
         )
 
         result = await self.db.execute(stmt)
@@ -264,6 +273,8 @@ class TweetService:
         if tweet.user_id != user.id:
             raise InsufficientPermissionsException("User not the author of this tweet")
 
+        await self.db.delete(tweet)
+
         return True
 
 
@@ -286,13 +297,24 @@ class MediaService:
         """Upload file and save to database."""
         await self._validate_file(file)
 
-        file_path = self._generate_file_path(user.id, file.filename)
+        if not file.filename:
+            ext = ".bin"
+        else:
+            ext = Path(file.filename).suffix
 
-        async with aiofiles.open(file_path, "wb") as f:
+        unique_name = f"{uuid4()}{ext}"
+        now = datetime.now()
+
+        web_relative = f"user_{user.id}/{now.year}/{now.month:02d}/{now.day:02d}/{unique_name}"
+
+        full_path = self.UPLOAD_ROOT / web_relative
+        full_path.parent.mkdir(parents=True, exist_ok=True)
+
+        async with aiofiles.open(full_path, "wb") as f:
             while chunk := await file.read(1024 * 1024):
                 await f.write(chunk)
 
-        media = Media(link=str(file_path))
+        media = Media(link=f"/uploads/{web_relative}")
 
         self.db.add(media)
         await self.db.flush()

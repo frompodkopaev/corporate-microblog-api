@@ -162,7 +162,7 @@ async def create_tweet(
 ) -> int:
     """Create a new tweet."""
     return await tweet_service.create_tweet(
-        current_user, tweet_schema.tweet_data, tweet_schema.media_ids
+        current_user, tweet_schema.tweet_data, tweet_schema.tweet_media_ids
     )
 
 

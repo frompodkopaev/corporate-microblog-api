@@ -19,7 +19,9 @@ class TweetCreate(BaseModel):
     """Tweet creation schema."""
 
     tweet_data: str = Field(..., alias="content", min_length=1, max_length=1000)
-    media_ids: Optional[List[int]] = Field(default_factory=list)
+    tweet_media_ids: Optional[List[int]] = Field(default_factory=list)
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class TweetInfo(BaseModel):
